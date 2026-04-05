@@ -1,0 +1,86 @@
+---
+- name: Production-Grade Ingress and Cert-Manager Setup
+  hosts: localhost
+  connection: local
+  vars:
+    letsencrypt_email: "trangiathanh0205@gmail.com"
+    ingress_ns: "ingress-nginx"
+    cert_manager_ns: "cert-manager"
+
+  tasks:
+    - name: 1. Add Helm Repositories
+      kubernetes.core.helm_repository:
+        name: "{{ item.name }}"
+        repo_url: "{{ item.url }}"
+      loop:
+        - { name: 'ingress-nginx', url: 'https://kubernetes.github.io/ingress-nginx' }
+        - { name: 'jetstack', url: 'https://charts.jetstack.io' }
+
+    - name: 2. Install NGINX Ingress Controller
+      kubernetes.core.helm:
+        name: ingress-nginx
+        chart_ref: ingress-nginx/ingress-nginx
+        release_namespace: "{{ ingress_ns }}"
+        create_namespace: true
+        wait: true
+
+    - name: 3. Install Cert-Manager (with CRDs)
+      kubernetes.core.helm:
+        name: cert-manager
+        chart_ref: jetstack/cert-manager
+        release_namespace: "{{ cert_manager_ns }}"
+        create_namespace: true
+        wait: true
+        values:
+          installCRDs: true
+
+    - name: 4. Wait for Cert-Manager Webhook Deployment (Retry Logic)
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        name: cert-manager-webhook
+        namespace: "{{ cert_manager_ns }}"
+      register: webhook_status
+      until: 
+        - webhook_status.resources is defined
+        - webhook_status.resources | length > 0
+        - webhook_status.resources[0].status.availableReplicas is defined
+        - webhook_status.resources[0].status.availableReplicas >= 1
+      retries: 15
+      delay: 10
+
+    - name: 5. Pause for Network Propagation
+      pause:
+        seconds: 15
+
+    - name: 6. Create ClusterIssuer (Let's Encrypt Prod)
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: cert-manager.io/v1
+          kind: ClusterIssuer
+          metadata:
+            name: letsencrypt-prod
+          spec:
+            acme:
+              server: https://acme-v02.api.letsencrypt.org/directory
+              email: "{{ letsencrypt_email }}"
+              privateKeySecretRef:
+                name: letsencrypt-prod-account-key
+              solvers:
+                - http01:
+                    ingress:
+                      class: nginx
+
+    - name: 7. Final Check - Wait for ClusterIssuer to be Ready
+      kubernetes.core.k8s_info:
+        api_version: cert-manager.io/v1
+        kind: ClusterIssuer
+        name: letsencrypt-prod
+      register: issuer_check
+      until:
+        - issuer_check.resources is defined
+        - issuer_check.resources | length > 0
+        - issuer_check.resources[0].status.conditions is defined
+        - (issuer_check.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | list | first).status == "True"
+      retries: 20
+      delay: 10
