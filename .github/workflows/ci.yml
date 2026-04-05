@@ -59,6 +59,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: k8s-manifests
+          path: k8s 
       
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -86,3 +87,4 @@ jobs:
           
           echo "Dưới đây là link Load Balancer để trỏ DNS:"
           kubectl get ingress -n default -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}'
+          echo "" # Xuống dòng cho dễ đọc logs
