@@ -16,10 +16,15 @@ module "eks" {
     coredns    = { most_recent = true }
     kube-proxy = { most_recent = true } 
     vpc-cni    = { most_recent = true }
+
+    aws-ebs-csi-driver = {
+      most_recent = true
+      service_account_role_arn = module.ebs_csi_irsa_role.iam_role_arn
+    }
   }
 
   eks_managed_node_group_defaults = { 
-    instance_types = ["c7i-flex.large"]
+    instance_types = ["t3.medium"]
     ami_type       = "AL2023_x86_64_STANDARD"
 
     vpc_security_group_ids = [aws_security_group.eks_node_extra.id]
@@ -31,7 +36,7 @@ module "eks" {
       min_size     = 1
       max_size     = 2
 
-      instance_types = ["c7i-flex.large"]
+      instance_types = ["t3.medium"]
       capacity_type  = "ON_DEMAND"
 
       force_update_version = true

@@ -1,0 +1,16 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seed-job
+spec:
+  template:
+    spec:
+      containers:
+      - name: seed
+        image: pun0205/backend-app:1.0.0
+        command: ["node", "src/seed.js"]
+        env:
+        - name: MONGO_URI
+          value: mongodb://mongo-service:27017/gamedb
+      restartPolicy: Never
+  backoffLimit: 2
