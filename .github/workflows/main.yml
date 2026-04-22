@@ -32,8 +32,8 @@ jobs:
 
       - name: Lint
         run: |
-          cd project/backend && npx eslint .
-          cd ../frontend && npx eslint .
+          cd project/backend && npx eslint@8.57.0 .
+          cd ../frontend && npx eslint@8.57.0 .
 
       - name: Security scan
         uses: aquasecurity/trivy-action@master
