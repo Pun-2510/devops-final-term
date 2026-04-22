@@ -35,7 +35,7 @@ export default function GameList() {
         </div>
         <button style={styles.btnAdd} onClick={() => setShowModal(true)}>
           + Add Game
-        
+        </button>
       </div>
 
       {/* LOADING */}
