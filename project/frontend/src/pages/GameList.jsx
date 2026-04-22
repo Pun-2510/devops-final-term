@@ -49,7 +49,7 @@ export default function GameList() {
           <div style={styles.emptyIcon}>🎮</div>
           <p style={styles.emptyTitle}>No games yet</p>
           <p style={styles.emptySub}>Click <strong>+ Add Game</strong> to add your first game</p>
-        </div>
+        
       )}
 
       {/* GRID — 4 cột cố định */}
