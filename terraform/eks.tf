@@ -49,5 +49,8 @@ module "eks" {
     }
   }
 
-  tags = local.tags
+  tags = {
+    Project = var.cluster_name
+    Env     = "dev"
+  }
 }

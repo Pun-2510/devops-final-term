@@ -3,12 +3,27 @@ module "vpc" {
   version = "~> 4.0"
 
   name = var.cluster_name
-  cidr = local.vpc_cidr
+  cidr = "10.0.0.0/16"
 
-  azs             = local.azs
-  public_subnets  = local.public_subnets
-  private_subnets = local.private_subnets
-  intra_subnets   = local.intra_subnets
+  azs = [
+    "${var.region}a",
+    "${var.region}b"
+  ]
+
+  public_subnets = [
+    "10.0.1.0/24",
+    "10.0.2.0/24"
+  ]
+
+  private_subnets = [
+    "10.0.3.0/24",
+    "10.0.4.0/24"
+  ]
+
+  intra_subnets = [
+    "10.0.5.0/24",
+    "10.0.6.0/24"
+  ]
 
   enable_nat_gateway = true
   single_nat_gateway = true
@@ -17,11 +32,16 @@ module "vpc" {
 
   public_subnet_tags = {
     "kubernetes.io/role/elb" = 1
+    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
   }
 
   private_subnet_tags = {
     "kubernetes.io/role/internal-elb" = 1
+    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
   }
 
-  tags = local.tags
+  tags = {
+    Project = var.cluster_name
+    Env     = "dev"
+  }
 }

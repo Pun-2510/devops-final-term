@@ -1,0 +1,117 @@
+name: CI/CD to EKS
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  DOCKER_USER: ${{ secrets.DOCKER_USERNAME }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            project/backend/node_modules
+            project/frontend/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Install deps
+        run: |
+          cd project/backend && npm install
+          cd ../frontend && npm install
+
+      - name: Lint
+        run: |
+          cd project/backend && npx eslint . || true
+          cd ../frontend && npx eslint . || true
+
+      - name: Build frontend
+        run: |
+          cd project/frontend && npm run build
+
+      - name: Security scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+
+      - name: Login Docker
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build & Push Backend
+        run: |
+          docker build -t $DOCKER_USER/backend-app:$IMAGE_TAG ./project/backend
+          docker push $DOCKER_USER/backend-app:$IMAGE_TAG
+
+      - name: Build & Push Frontend
+        run: |
+          docker build -t $DOCKER_USER/frontend-app:$IMAGE_TAG ./project/frontend
+          docker push $DOCKER_USER/frontend-app:$IMAGE_TAG
+
+      - name: Inject image vào manifest
+        run: |
+          sed -i "s|BACKEND_IMAGE|$DOCKER_USER/backend-app:$IMAGE_TAG|g" k8s/k8s.yaml
+          sed -i "s|FRONTEND_IMAGE|$DOCKER_USER/frontend-app:$IMAGE_TAG|g" k8s/k8s.yaml
+          sed -i "s|BACKEND_IMAGE|$DOCKER_USER/backend-app:$IMAGE_TAG|g" k8s/seed-job.yaml
+
+      - name: Upload manifests
+        uses: actions/upload-artifact@v4
+        with:
+          name: k8s
+          path: k8s/
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: k8s
+          path: k8s
+
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig \
+          --region $AWS_REGION \
+          --name $CLUSTER_NAME
+
+      - name: Deploy toàn bộ K8s
+        run: kubectl apply -f k8s/
+
+      - name: Seed Data
+        run: |
+          kubectl delete job seed-job || true
+          kubectl apply -f k8s/seed-job.yaml
+          kubectl wait --for=condition=complete job/seed-job --timeout=90s
+
+      - name: Check rollout
+        run: |
+          kubectl rollout status deployment/backend
+          kubectl rollout status deployment/frontend
+
+      - name: Debug
+        run: |
+          kubectl get pods
+          kubectl get ingress

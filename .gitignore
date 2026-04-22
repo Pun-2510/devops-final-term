@@ -4,3 +4,13 @@ terraform/.terraform
 terraform/.terraform.lock.hcl
 terraform/.terraform.tfstate
 terraform/.terraform.tfstate.backup
+
+project/backend/node_modules
+project/backend/dist
+project/backend/build
+project/backend/.env
+
+project/frontend/node_modules
+project/frontend/dist
+project/frontend/build
+project/frontend/.env
