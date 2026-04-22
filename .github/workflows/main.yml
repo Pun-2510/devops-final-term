@@ -35,16 +35,16 @@ jobs:
           cd project/backend && npx eslint . || true
           cd ../frontend && npx eslint . || true
 
-      - name: Build frontend
-        run: |
-          cd project/frontend && npm run build
-
       - name: Security scan
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
           severity: CRITICAL,HIGH
           exit-code: '1'
+
+      - name: Build frontend
+        run: |
+          cd project/frontend && npm run build
 
       - name: Login Docker
         uses: docker/login-action@v3
