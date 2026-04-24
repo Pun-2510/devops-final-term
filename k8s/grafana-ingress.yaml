@@ -1,7 +1,8 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: grafana-ingress
+  name: kube-prometheus-stack-grafana
+  namespace: monitoring
   annotations:
     kubernetes.io/ingress.class: nginx
     cert-manager.io/cluster-issuer: letsencrypt-prod
@@ -23,6 +24,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: monitoring-grafana
+                name: kube-prometheus-stack-grafana
                 port:
                   number: 80

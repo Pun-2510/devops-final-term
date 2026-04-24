@@ -62,7 +62,7 @@ jobs:
           docker build -t $DOCKER_USER/frontend-app:$IMAGE_TAG ./project/frontend
           docker push $DOCKER_USER/frontend-app:$IMAGE_TAG
 
-      - name: Inject image vào manifest
+      - name: Inject image into manifest
         run: |
           sed -i "s|BACKEND_IMAGE|$DOCKER_USER/backend-app:$IMAGE_TAG|g" k8s/k8s.yaml
           sed -i "s|FRONTEND_IMAGE|$DOCKER_USER/frontend-app:$IMAGE_TAG|g" k8s/k8s.yaml
