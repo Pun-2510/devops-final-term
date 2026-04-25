@@ -33,6 +33,13 @@ spec:
           image: mongo:6
           ports:
             - containerPort: 27017
+
+          livenessProbe:
+            tcpSocket:
+              port: 27017
+            initialDelaySeconds: 30
+            periodSeconds: 10
+
           volumeMounts:
             - name: mongo-data
               mountPath: /data/db
@@ -71,14 +78,29 @@ spec:
           env:
             - name: MONGO_URI
               value: mongodb://mongo-service:27017/gamedb
+              
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            failureThreshold: 30
+            periodSeconds: 5
+
           livenessProbe:
             httpGet:
               path: /health
               port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+
           readinessProbe:
             httpGet:
-              path: /health
+              path: /ready
               port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 5
 
 ---
 apiVersion: v1
