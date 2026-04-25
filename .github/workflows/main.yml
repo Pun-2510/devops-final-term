@@ -115,8 +115,8 @@ jobs:
       - name: Deploy STAGING config
         run: kubectl apply -f k8s/staging.yaml
 
-      - name: Deploy HPA
-        run: kubectl apply -f k8s/hpa.yaml -n staging
+      # - name: Deploy HPA
+      #   run: kubectl apply -f k8s/hpa.yaml -n staging
 
       - name: Wait Mongo ready
         run: |
@@ -175,8 +175,8 @@ jobs:
       - name: Deploy Grafana Ingress
         run: kubectl apply -f k8s/grafana-ingress.yaml
 
-      - name: Deploy HPA
-        run: kubectl apply -f k8s/hpa.yaml -n production
+      # - name: Deploy HPA
+      #   run: kubectl apply -f k8s/hpa.yaml -n production
 
       - name: Rollout check + rollback
         run: |
