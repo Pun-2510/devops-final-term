@@ -1,10 +1,8 @@
-# 1. DATABASE (MongoDB)
+# Mongo Service
 apiVersion: v1
 kind: Service
 metadata:
   name: mongo-service
-  labels:
-    app: mongo
 spec:
   clusterIP: None
   selector:
@@ -14,6 +12,7 @@ spec:
       targetPort: 27017
 
 ---
+# Mongo StatefulSet
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -49,7 +48,7 @@ spec:
             storage: 5Gi
 
 ---
-# 2. BACKEND (Node.js API)
+# Backend
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -66,28 +65,20 @@ spec:
     spec:
       containers:
         - name: backend
-          image: pun0205/backend-app:1.0.0
-          imagePullPolicy: Always
+          image: BACKEND_IMAGE
           ports:
             - containerPort: 5000
-
           env:
             - name: MONGO_URI
               value: mongodb://mongo-service:27017/gamedb
-
           livenessProbe:
             httpGet:
               path: /health
               port: 5000
-            initialDelaySeconds: 10
-            periodSeconds: 10
-
           readinessProbe:
             httpGet:
               path: /health
               port: 5000
-            initialDelaySeconds: 5
-            periodSeconds: 5
 
 ---
 apiVersion: v1
@@ -100,10 +91,9 @@ spec:
   ports:
     - port: 5000
       targetPort: 5000
-  type: ClusterIP
 
 ---
-# 3. FRONTEND (React + Nginx)
+# Frontend
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -120,7 +110,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: pun0205/frontend-app:1.0.0
+          image: FRONTEND_IMAGE
           ports:
             - containerPort: 80
 
@@ -135,44 +125,3 @@ spec:
   ports:
     - port: 80
       targetPort: 80
-  type: ClusterIP
-
----
-# 4. INGRESS (TLS + Domain)
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: my-ingress
-  namespace: default
-  annotations:
-    kubernetes.io/ingress.class: nginx
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
-spec:
-  ingressClassName: nginx
-  tls:
-    - hosts:
-        - baocaohoc.online
-      secretName: baocaohoc-tls
-
-  rules:
-    - host: baocaohoc.online
-      http:
-        paths:
-          # API
-          - path: /api
-            pathType: Prefix
-            backend:
-              service:
-                name: backend-service
-                port:
-                  number: 5000
-
-          # Frontend
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: frontend-service
-                port:
-                  number: 80

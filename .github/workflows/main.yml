@@ -11,6 +11,9 @@ env:
   IMAGE_TAG: ${{ github.sha }}
 
 jobs:
+# =========================
+# 1. BUILD & PUSH
+# =========================
   build-and-push:
     runs-on: ubuntu-latest
 
@@ -62,11 +65,11 @@ jobs:
           docker build -t $DOCKER_USER/frontend-app:$IMAGE_TAG ./project/frontend
           docker push $DOCKER_USER/frontend-app:$IMAGE_TAG
 
-      - name: Inject image into manifest
+      # Inject image vào BASE
+      - name: Inject image into base.yaml
         run: |
-          sed -i "s|BACKEND_IMAGE|$DOCKER_USER/backend-app:$IMAGE_TAG|g" k8s/k8s.yaml
-          sed -i "s|FRONTEND_IMAGE|$DOCKER_USER/frontend-app:$IMAGE_TAG|g" k8s/k8s.yaml
-          sed -i "s|BACKEND_IMAGE|$DOCKER_USER/backend-app:$IMAGE_TAG|g" k8s/seed-job.yaml
+          sed -i "s|BACKEND_IMAGE|$DOCKER_USER/backend-app:$IMAGE_TAG|g" k8s/base.yaml
+          sed -i "s|FRONTEND_IMAGE|$DOCKER_USER/frontend-app:$IMAGE_TAG|g" k8s/base.yaml
 
       - name: Upload manifests
         uses: actions/upload-artifact@v4
@@ -74,15 +77,22 @@ jobs:
           name: k8s
           path: k8s/
 
-  deploy:
+# =========================
+# 2. STAGING DEPLOY
+# =========================
+  staging-deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
+
+    environment:
+      name: staging
+      url: https://staging.baocaohoc.online
 
     steps:
       - uses: actions/download-artifact@v4
         with:
           name: k8s
-          path: k8s
+          path: k8s/
 
       - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v2
@@ -93,25 +103,79 @@ jobs:
 
       - name: Update kubeconfig
         run: |
-          aws eks update-kubeconfig \
-          --region $AWS_REGION \
-          --name $CLUSTER_NAME
+          aws eks update-kubeconfig --region $AWS_REGION --name $CLUSTER_NAME
 
-      - name: Deploy toàn bộ K8s
-        run: kubectl apply -f k8s/
-
-      - name: Seed Data
+      - name: Create namespace
         run: |
-          kubectl delete job seed-job || true
-          kubectl apply -f k8s/seed-job.yaml
-          kubectl wait --for=condition=complete job/seed-job --timeout=90s
+          kubectl create namespace staging || true
 
-      - name: Check rollout
+      - name: Deploy BASE (staging)
+        run: kubectl apply -f k8s/base.yaml -n staging
+
+      - name: Deploy STAGING config
+        run: kubectl apply -f k8s/staging.yaml
+
+      - name: Seed Data (staging)
         run: |
-          kubectl rollout status deployment/backend
-          kubectl rollout status deployment/frontend
+          kubectl delete job seed-job -n staging || true
+          kubectl apply -f k8s/seed-job.yaml -n staging
+          kubectl wait --for=condition=complete job/seed-job -n staging --timeout=90s
+
+      - name: Rollout check (staging)
+        run: |
+          kubectl rollout status deployment/backend -n staging || exit 1
+          kubectl rollout status deployment/frontend -n staging || exit 1
+
+# =========================
+# 3. PRODUCTION DEPLOY
+# =========================
+  production-deploy:
+    needs: staging-deploy
+    runs-on: ubuntu-latest
+
+    environment:
+      name: production
+      url: https://baocaohoc.online
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: k8s
+          path: k8s/
+
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --region $AWS_REGION --name $CLUSTER_NAME
+
+      - name: Create namespace
+        run: |
+          kubectl create namespace production || true
+
+      - name: Deploy BASE (production)
+        run: kubectl apply -f k8s/base.yaml -n production
+
+      - name: Deploy PRODUCTION config
+        run: kubectl apply -f k8s/production.yaml
+
+      - name: Rollout check + rollback
+        run: |
+          kubectl rollout status deployment/backend -n production || kubectl rollout undo deployment/backend -n production
+          kubectl rollout status deployment/frontend -n production || kubectl rollout undo deployment/frontend -n production
+
+      - name: Seed Data (production)
+        run: |
+          kubectl delete job seed-job -n production || true
+          kubectl apply -f k8s/seed-job.yaml -n production
+          kubectl wait --for=condition=complete job/seed-job -n production --timeout=90s
 
       - name: Debug
         run: |
-          kubectl get pods
-          kubectl get ingress
+          kubectl get pods -n production
+          kubectl get ingress -n production
