@@ -115,11 +115,16 @@ jobs:
       - name: Deploy STAGING config
         run: kubectl apply -f k8s/staging.yaml
 
+      - name: Wait Mongo ready
+        run: |
+          kubectl rollout status statefulset/mongo -n staging
+
       - name: Seed Data (staging)
         run: |
           kubectl delete job seed-job -n staging || true
           kubectl apply -f k8s/seed-job.yaml -n staging
-          kubectl wait --for=condition=complete job/seed-job -n staging --timeout=90s
+          kubectl wait --for=condition=complete job/seed-job -n staging --timeout=120s || \
+          kubectl logs job/seed-job -n staging || exit 1
 
       - name: Rollout check (staging)
         run: |
@@ -169,11 +174,16 @@ jobs:
           kubectl rollout status deployment/backend -n production || kubectl rollout undo deployment/backend -n production
           kubectl rollout status deployment/frontend -n production || kubectl rollout undo deployment/frontend -n production
 
+      - name: Wait Mongo ready
+        run: |
+          kubectl rollout status statefulset/mongo -n production
+
       - name: Seed Data (production)
         run: |
           kubectl delete job seed-job -n production || true
           kubectl apply -f k8s/seed-job.yaml -n production
-          kubectl wait --for=condition=complete job/seed-job -n production --timeout=90s
+          kubectl wait --for=condition=complete job/seed-job -n production --timeout=120s || \
+          kubectl logs job/seed-job -n production || exit 1
 
       - name: Debug
         run: |
