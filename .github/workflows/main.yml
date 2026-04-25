@@ -169,6 +169,9 @@ jobs:
       - name: Deploy PRODUCTION config
         run: kubectl apply -f k8s/production.yaml
 
+      - name: Deploy Grafana Ingress
+        run: kubectl apply -f k8s/grafana-ingress.yaml
+
       - name: Rollout check + rollback
         run: |
           kubectl rollout status deployment/backend -n production || kubectl rollout undo deployment/backend -n production
