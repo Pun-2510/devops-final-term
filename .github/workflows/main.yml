@@ -15,7 +15,7 @@ env:
 
 jobs:
 
-# 1. BUILD & PUSH IMAGE
+# 1. Build & Push
   build-and-push:
     runs-on: ubuntu-latest
 
@@ -80,7 +80,7 @@ jobs:
             k8s/
             monitoring/
 
-# 2. STAGING DEPLOY
+# 2. Staging
   staging-deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
@@ -129,7 +129,7 @@ jobs:
           kubectl rollout status deployment/backend -n staging
           kubectl rollout status deployment/frontend -n staging
 
-# 3. PRODUCTION DEPLOY
+# 3. Production
   production-deploy:
     needs: staging-deploy
     runs-on: ubuntu-latest
@@ -176,40 +176,32 @@ jobs:
             -n monitoring \
             -f monitoring/values.yaml
 
-          sleep 10
-
-          kubectl patch alertmanager kube-prometheus-stack-alertmanager \
-            -n monitoring \
-            --type merge \
-            -p '{"spec":{"configSecret":"alertmanager-config"}}'
-
       - name: Restart Alertmanager
         run: |
           kubectl rollout restart statefulset alertmanager-kube-prometheus-stack-alertmanager -n monitoring
 
-      - name: Deploy BASE (production)
+      - name: Deploy BASE
         run: kubectl apply -f k8s/base.yaml -n production
 
       - name: Deploy PRODUCTION config
         run: kubectl apply -f k8s/production.yaml
 
-      - name: Wait backend stable
-        run: kubectl rollout status deployment/backend -n production
+      - name: Deploy Grafana Ingress
+        run: kubectl apply -f k8s/grafana-ingress.yaml -n monitoring
+        
+      - name: Deploy Alert Rules 
+        run: kubectl apply -f k8s/alerts/
 
-      - name: Wait metrics API
-        run: kubectl top nodes || true
+      - name: Deploy Alertmanager Ingress
+        run: kubectl apply -f k8s/alertmanager-ingress.yaml -n monitoring
 
-      - name: Deploy HPA (production only)
+      - name: Deploy HPA
         run: kubectl apply -f k8s/hpa.yaml -n production
 
       - name: Verify HPA
         run: |
           kubectl get hpa -n production
           kubectl describe hpa backend-hpa -n production || true
-
-      - name: Wait HPA ready
-        run: |
-          kubectl wait --for=condition=available deployment/backend -n production --timeout=120s || true
 
       - name: Install load testing tool
         run: sudo apt-get install -y hey
