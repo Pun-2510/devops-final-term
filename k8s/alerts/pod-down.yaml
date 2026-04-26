@@ -18,9 +18,9 @@ spec:
             )
             and on(pod, namespace)
             kube_pod_owner{namespace="production", owner_kind!="Job"}
-          for: 30s
+          for: 5s
           labels:
             severity: critical
           annotations:
             summary: "Pod is down"
-            description: "Pod is not ready (excluding Jobs)"
+            description: "Pod is not ready"
