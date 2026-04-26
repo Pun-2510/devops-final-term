@@ -7,6 +7,7 @@ on:
     branches: [ main ]
 
 env:
+  SMTP_AUTH_PASSWORD: ${{ secrets.SMTP_AUTH_PASSWORD }}
   DOCKER_USER: ${{ secrets.DOCKER_USERNAME }}
   AWS_REGION: ${{ secrets.AWS_REGION }}
   CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
@@ -75,7 +76,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: k8s
-          path: k8s/
+          path: |
+            k8s/
+            monitoring/
 
 # 2. staging deploy
   staging-deploy:
@@ -90,7 +93,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: k8s
-          path: k8s/
+          path: .
 
       - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v2
@@ -142,7 +145,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: k8s
-          path: k8s/
+          path: .
 
       - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v2
@@ -157,7 +160,7 @@ jobs:
 
       - name: Inject SMTP password
         run: |
-          sed -i "s|\${SMTP_AUTH_PASSWORD}|${{ secrets.SMTP_AUTH_PASSWORD }}|g" monitoring/values.yaml
+          sed -i "s|\${SMTP_AUTH_PASSWORD}|$SMTP_AUTH_PASSWORD|g" monitoring/values.yaml
 
       - name: Update Alertmanager config
         run: |

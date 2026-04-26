@@ -30,7 +30,7 @@ export default function GameList() {
       {/* HEADER */}
       <div style={styles.topbar}>
         <div style={{ textAlign: 'left' }}>       {/* ← fix căn giữa */}
-          <h1 style={styles.title}>Game Showcase Review</h1>
+          <h1 style={styles.title}>GAME SHOWCASE REVIEW</h1>
           <p style={styles.subtitle}>Discover and explore amazing games</p>
         </div>
         <button style={styles.btnAdd} onClick={() => setShowModal(true)}>
