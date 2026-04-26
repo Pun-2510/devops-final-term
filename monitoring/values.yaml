@@ -1,5 +1,6 @@
 alertmanager:
   enabled: true
+
   config:
     global:
       smtp_smarthost: 'smtp.gmail.com:587'
@@ -9,11 +10,11 @@ alertmanager:
       smtp_require_tls: true
 
     route:
+      receiver: 'email-alert'
       group_by: ['alertname']
       group_wait: 10s
       group_interval: 30s
       repeat_interval: 1m
-      receiver: 'email-alert'
 
     receivers:
       - name: 'email-alert'
