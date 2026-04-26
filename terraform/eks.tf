@@ -24,7 +24,7 @@ module "eks" {
   }
 
   eks_managed_node_group_defaults = { 
-    instance_types = ["t3.medium"]
+    instance_types = ["t3.xlarge"]
     ami_type       = "AL2023_x86_64_STANDARD"
 
     vpc_security_group_ids = [aws_security_group.eks_node_extra.id]
@@ -32,11 +32,11 @@ module "eks" {
 
   eks_managed_node_groups = {
     main = {
-      desired_size = 2
+      desired_size = 3
       min_size     = 1
       max_size     = 4
 
-      instance_types = ["t3.medium"]
+      instance_types = ["t3.xlarge"]
       capacity_type  = "ON_DEMAND"
 
       force_update_version = true
