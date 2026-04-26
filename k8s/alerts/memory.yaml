@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: memory-alert
+  namespace: monitoring
+spec:
+  groups:
+    - name: memory.rules
+      rules:
+        - alert: HighMemoryUsage
+          expr: container_memory_usage_bytes > 500000000
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Beyond Memory Usage Threshold"
+            description: "Memory usage > 500MB"
