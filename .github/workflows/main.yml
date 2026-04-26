@@ -163,11 +163,17 @@ jobs:
           kubectl create namespace production || true
           kubectl create namespace monitoring || true
 
-      - name: Inject SMTP password
+      - name: Create Alertmanager Secret
         run: |
-          sed -i "s|\${SMTP_AUTH_PASSWORD}|$SMTP_AUTH_PASSWORD|g" monitoring/values.yaml
+          kubectl delete secret alertmanager-config -n monitoring || true
 
-      - name: Update Alertmanager config
+          sed "s|\${SMTP_AUTH_PASSWORD}|$SMTP_AUTH_PASSWORD|g" monitoring/alertmanager.yaml > am.yaml
+
+          kubectl create secret generic alertmanager-config \
+            --from-file=alertmanager.yaml=am.yaml \
+            -n monitoring
+
+      - name: Deploy kube-prometheus-stack
         run: |
           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
           helm repo update
@@ -175,6 +181,13 @@ jobs:
           helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
             -n monitoring \
             -f monitoring/values.yaml
+
+          sleep 10
+
+          kubectl patch alertmanager kube-prometheus-stack-alertmanager \
+            -n monitoring \
+            --type merge \
+            -p '{"spec":{"configSecret":"alertmanager-config"}}'
       
       - name: Restart Alertmanager
         run: |
