@@ -158,6 +158,11 @@ jobs:
         run: |
           aws eks update-kubeconfig --region $AWS_REGION --name $CLUSTER_NAME
 
+      - name: Create namespace
+        run: |
+          kubectl create namespace production || true
+          kubectl create namespace monitoring || true
+
       - name: Inject SMTP password
         run: |
           sed -i "s|\${SMTP_AUTH_PASSWORD}|$SMTP_AUTH_PASSWORD|g" monitoring/values.yaml
@@ -167,14 +172,13 @@ jobs:
           helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
           helm repo update
 
-          helm upgrade kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+          helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
             -n monitoring \
             -f monitoring/values.yaml
-
-      - name: Create namespace
+      
+      - name: Restart Alertmanager
         run: |
-          kubectl create namespace production || true
-          kubectl create namespace monitoring || true
+          kubectl rollout restart statefulset alertmanager-kube-prometheus-stack-alertmanager -n monitoring
 
       # App Deployments
       - name: Deploy BASE (production)

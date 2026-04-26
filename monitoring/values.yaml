@@ -1,6 +1,10 @@
 alertmanager:
   enabled: true
 
+  alertmanagerSpec:
+    replicas: 1
+    configSecret: ""
+
   config:
     global:
       smtp_smarthost: 'smtp.gmail.com:587'
@@ -21,3 +25,13 @@ alertmanager:
         email_configs:
           - to: 'tranthanh251005@gmail.com'
             send_resolved: true
+
+    inhibit_rules: []
+
+# (optional nhưng nên có)
+prometheus:
+  prometheusSpec:
+    retention: 7d
+
+grafana:
+  adminPassword: admin
