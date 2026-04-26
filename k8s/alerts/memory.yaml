@@ -10,7 +10,7 @@ spec:
     - name: memory.rules
       rules:
         - alert: HighMemoryUsage
-          expr: container_memory_usage_bytes > 500000000
+          expr: sum(container_memory_usage_bytes{namespace="production", container!=""}) by (pod) > 200000000
           for: 1m
           labels:
             severity: warning
