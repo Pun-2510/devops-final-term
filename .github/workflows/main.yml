@@ -188,12 +188,9 @@ jobs:
 
       - name: Deploy Grafana Ingress
         run: kubectl apply -f k8s/grafana-ingress.yaml -n monitoring
-        
+
       - name: Deploy Alert Rules 
         run: kubectl apply -f k8s/alerts/
-
-      - name: Deploy Alertmanager Ingress
-        run: kubectl apply -f k8s/alertmanager-ingress.yaml -n monitoring
 
       - name: Deploy HPA
         run: kubectl apply -f k8s/hpa.yaml -n production
