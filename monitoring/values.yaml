@@ -1,3 +1,11 @@
+defaultRules:
+  create: true
+  rules:
+    kubeControllerManager: false
+    kubeScheduler: false
+    general: false
+    kubePrometheusGeneral: false
+
 alertmanager:
   enabled: true
 
