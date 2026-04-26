@@ -3,12 +3,14 @@ kind: PrometheusRule
 metadata:
   name: pod-down-alert
   namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
 spec:
   groups:
     - name: pod.rules
       rules:
         - alert: PodDown
-          expr: kube_pod_status_ready{condition="true"} == 0
+          expr: kube_pod_status_ready{condition="true", namespace="production"} == 0
           for: 30s
           labels:
             severity: critical
