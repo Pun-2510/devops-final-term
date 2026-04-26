@@ -29,7 +29,7 @@ export default function GameList() {
 
       {/* HEADER */}
       <div style={styles.topbar}>
-        <div style={{ textAlign: 'left' }}>       {/* ← fix căn giữa */}
+        <div style={{ textAlign: 'left' }}>      {/* ← fix căn giữa */}
           <h1 style={styles.title}>Game Library</h1>
           <p style={styles.subtitle}>Discover and explore amazing games</p>
         </div>

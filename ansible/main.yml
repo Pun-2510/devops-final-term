@@ -14,11 +14,46 @@
         name: "{{ item.name }}"
         repo_url: "{{ item.url }}"
       loop:
+        - { name: 'metrics-server', url: 'https://kubernetes-sigs.github.io/metrics-server/' }
         - { name: 'ingress-nginx', url: 'https://kubernetes.github.io/ingress-nginx' }
         - { name: 'jetstack', url: 'https://charts.jetstack.io' }
         - { name: 'prometheus-community', url: 'https://prometheus-community.github.io/helm-charts' }
 
-    - name: 2. Install NGINX Ingress Controller
+    - name: 1.1 Install Metrics Server
+      kubernetes.core.helm:
+        name: metrics-server
+        chart_ref: metrics-server/metrics-server
+        release_namespace: kube-system
+        create_namespace: false
+        values:
+          args:
+            - --kubelet-insecure-tls
+            - --kubelet-preferred-address-types=InternalIP
+
+    - name: 1.1.1 Wait Metrics Server Deployment Exists
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        name: metrics-server
+        namespace: kube-system
+      register: ms_init
+      until: ms_init.resources | length > 0
+      retries: 20
+      delay: 10
+    
+    - name: 1.1.2 Wait for Metrics Server
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        name: metrics-server
+        namespace: kube-system
+      register: ms_status
+      until:
+        - ms_status.resources | length > 0
+        - ms_status.resources[0].status.readyReplicas is defined
+        - ms_status.resources[0].status.readyReplicas >= 1
+      retries: 15
+      delay: 10
+
+    - name: 1.2 Install NGINX Ingress Controller
       kubernetes.core.helm:
         name: ingress-nginx
         chart_ref: ingress-nginx/ingress-nginx
@@ -26,7 +61,7 @@
         create_namespace: true
         wait: true
 
-    - name: 3. Install Cert-Manager (with CRDs)
+    - name: 1.3 Install Cert-Manager (with CRDs)
       kubernetes.core.helm:
         name: cert-manager
         chart_ref: jetstack/cert-manager
@@ -36,7 +71,7 @@
         values:
           installCRDs: true
 
-    - name: 4. Install Prometheus and Grafana
+    - name: 1.4 Install Prometheus and Grafana
       kubernetes.core.helm:
         name: kube-prometheus-stack
         chart_ref: prometheus-community/kube-prometheus-stack
@@ -44,7 +79,7 @@
         create_namespace: true
         wait: true
 
-    - name: 4. Wait for Cert-Manager Webhook Deployment (Retry Logic)
+    - name: 1.3.1 Wait for Cert-Manager Webhook Deployment (Retry Logic)
       kubernetes.core.k8s_info:
         kind: Deployment
         name: cert-manager-webhook
@@ -58,11 +93,11 @@
       retries: 15
       delay: 10
 
-    - name: 5. Pause for Network Propagation
+    - name: 1.3.2 Pause for Network Propagation
       pause:
         seconds: 15
 
-    - name: 6. Create ClusterIssuer (Let's Encrypt Prod)
+    - name: 2. Create ClusterIssuer (Let's Encrypt Prod)
       kubernetes.core.k8s:
         state: present
         definition:
@@ -81,7 +116,7 @@
                     ingress:
                       class: nginx
 
-    - name: 7. Final Check - Wait for ClusterIssuer to be Ready
+    - name: 2.1 Wait for ClusterIssuer to be Ready
       kubernetes.core.k8s_info:
         api_version: cert-manager.io/v1
         kind: ClusterIssuer

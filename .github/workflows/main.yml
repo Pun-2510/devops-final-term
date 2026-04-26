@@ -14,7 +14,8 @@ env:
   IMAGE_TAG: ${{ github.sha }}
 
 jobs:
-# 1. build and push image to Docker Hub
+
+# 1. BUILD & PUSH IMAGE
   build-and-push:
     runs-on: ubuntu-latest
 
@@ -66,7 +67,6 @@ jobs:
           docker build -t $DOCKER_USER/frontend-app:$IMAGE_TAG ./project/frontend
           docker push $DOCKER_USER/frontend-app:$IMAGE_TAG
 
-      # Inject image vào BASE
       - name: Inject image into base.yaml
         run: |
           sed -i "s|BACKEND_IMAGE|$DOCKER_USER/backend-app:$IMAGE_TAG|g" k8s/base.yaml
@@ -80,7 +80,7 @@ jobs:
             k8s/
             monitoring/
 
-# 2. staging deploy
+# 2. STAGING DEPLOY
   staging-deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
@@ -103,12 +103,10 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Update kubeconfig
-        run: |
-          aws eks update-kubeconfig --region $AWS_REGION --name $CLUSTER_NAME
+        run: aws eks update-kubeconfig --region $AWS_REGION --name $CLUSTER_NAME
 
       - name: Create namespace
-        run: |
-          kubectl create namespace staging || true
+        run: kubectl create namespace staging || true
 
       - name: Deploy BASE (staging)
         run: kubectl apply -f k8s/base.yaml -n staging
@@ -117,8 +115,7 @@ jobs:
         run: kubectl apply -f k8s/staging.yaml
 
       - name: Wait Mongo ready
-        run: |
-          kubectl rollout status statefulset/mongo -n staging
+        run: kubectl rollout status statefulset/mongo -n staging
 
       - name: Seed Data (staging)
         run: |
@@ -127,12 +124,12 @@ jobs:
           kubectl wait --for=condition=complete job/seed-job -n staging --timeout=120s || \
           kubectl logs job/seed-job -n staging || exit 1
 
-      - name: Rollout check (staging)
+      - name: Rollout check
         run: |
-          kubectl rollout status deployment/backend -n staging || exit 1
-          kubectl rollout status deployment/frontend -n staging || exit 1
+          kubectl rollout status deployment/backend -n staging
+          kubectl rollout status deployment/frontend -n staging
 
-# 3. production deploy
+# 3. PRODUCTION DEPLOY
   production-deploy:
     needs: staging-deploy
     runs-on: ubuntu-latest
@@ -155,10 +152,9 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Update kubeconfig
-        run: |
-          aws eks update-kubeconfig --region $AWS_REGION --name $CLUSTER_NAME
+        run: aws eks update-kubeconfig --region $AWS_REGION --name $CLUSTER_NAME
 
-      - name: Create namespace
+      - name: Create namespaces
         run: |
           kubectl create namespace production || true
           kubectl create namespace monitoring || true
@@ -166,9 +162,7 @@ jobs:
       - name: Create Alertmanager Secret
         run: |
           kubectl delete secret alertmanager-config -n monitoring || true
-
           sed "s|\${SMTP_AUTH_PASSWORD}|$SMTP_AUTH_PASSWORD|g" monitoring/alertmanager.yaml > am.yaml
-
           kubectl create secret generic alertmanager-config \
             --from-file=alertmanager.yaml=am.yaml \
             -n monitoring
@@ -188,27 +182,42 @@ jobs:
             -n monitoring \
             --type merge \
             -p '{"spec":{"configSecret":"alertmanager-config"}}'
-      
+
       - name: Restart Alertmanager
         run: |
           kubectl rollout restart statefulset alertmanager-kube-prometheus-stack-alertmanager -n monitoring
 
-      # App Deployments
       - name: Deploy BASE (production)
         run: kubectl apply -f k8s/base.yaml -n production
 
       - name: Deploy PRODUCTION config
         run: kubectl apply -f k8s/production.yaml
 
-      # Monitoring Deployments
-      - name: Deploy Grafana Ingress
-        run: kubectl apply -f k8s/grafana-ingress.yaml
+      - name: Wait backend stable
+        run: kubectl rollout status deployment/backend -n production
 
-      - name: Deploy Alertmanager Ingress
-        run: kubectl apply -f k8s/alertmanager-ingress.yaml
+      - name: Wait metrics API
+        run: kubectl top nodes || true
 
-      - name: Deploy Alert Rules
-        run: kubectl apply -f k8s/alerts/
+      - name: Deploy HPA (production only)
+        run: kubectl apply -f k8s/hpa.yaml -n production
+
+      - name: Verify HPA
+        run: |
+          kubectl get hpa -n production
+          kubectl describe hpa backend-hpa -n production || true
+
+      - name: Wait HPA ready
+        run: |
+          kubectl wait --for=condition=available deployment/backend -n production --timeout=120s || true
+
+      - name: Install load testing tool
+        run: sudo apt-get install -y hey
+
+      - name: Load test production
+        run: |
+          INGRESS=$(kubectl get ingress -n production -o jsonpath='{.items[0].spec.rules[0].host}')
+          hey -z 1m -c 80 https://$INGRESS/api || true
 
       - name: Rollout check + rollback
         run: |
@@ -216,8 +225,7 @@ jobs:
           kubectl rollout status deployment/frontend -n production || kubectl rollout undo deployment/frontend -n production
 
       - name: Wait Mongo ready
-        run: |
-          kubectl rollout status statefulset/mongo -n production
+        run: kubectl rollout status statefulset/mongo -n production
 
       - name: Seed Data (production)
         run: |
@@ -226,7 +234,8 @@ jobs:
           kubectl wait --for=condition=complete job/seed-job -n production --timeout=120s || \
           kubectl logs job/seed-job -n production || exit 1
 
-      - name: Debug
+      - name: Debug cluster state
         run: |
           kubectl get pods -n production
+          kubectl get hpa -n production
           kubectl get ingress -n production
