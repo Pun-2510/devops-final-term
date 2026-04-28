@@ -193,11 +193,18 @@ const games = [
 mongoose
   .connect(process.env.MONGO_URI || 'mongodb://mongo:27017/gamedb')
   .then(async () => {
-    await Game.deleteMany({});
+    // Check DB for existing data
+    const count = await Game.countDocuments();
+
+    if (count > 0) {
+      console.log('Data already exists, skipping seed...');
+      await mongoose.connection.close();
+      process.exit(0);
+    }
+
     await Game.insertMany(games);
 
     console.log('Seeded successfully!');
-
     await mongoose.connection.close();
     process.exit(0);
   })

@@ -1,13 +1,14 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: seed-job
+  generateName: seed-job-
 spec:
   template:
     spec:
       containers:
       - name: seed
-        image: pun0205/backend-app:1.0.0
+        image: BACKEND_IMAGE
+        imagePullPolicy: Always
         command: ["node", "src/seed.js"]
         env:
         - name: MONGO_URI

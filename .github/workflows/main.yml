@@ -67,10 +67,11 @@ jobs:
           docker build -t $DOCKER_USER/frontend-app:$IMAGE_TAG ./project/frontend
           docker push $DOCKER_USER/frontend-app:$IMAGE_TAG
 
-      - name: Inject image into base.yaml
+      - name: Inject image into base.yaml and seed-job.yaml
         run: |
           sed -i "s|BACKEND_IMAGE|$DOCKER_USER/backend-app:$IMAGE_TAG|g" k8s/base.yaml
           sed -i "s|FRONTEND_IMAGE|$DOCKER_USER/frontend-app:$IMAGE_TAG|g" k8s/base.yaml
+          sed -i "s|BACKEND_IMAGE|$DOCKER_USER/backend-app:$IMAGE_TAG|g" k8s/seed-job.yaml
 
       - name: Upload manifests
         uses: actions/upload-artifact@v4
@@ -119,10 +120,14 @@ jobs:
 
       - name: Seed Data (staging)
         run: |
-          kubectl delete job seed-job -n staging || true
           kubectl apply -f k8s/seed-job.yaml -n staging
-          kubectl wait --for=condition=complete job/seed-job -n staging --timeout=120s || \
-          kubectl logs job/seed-job -n staging || exit 1
+
+          JOB_NAME=$(kubectl get jobs -n staging \
+            --sort-by=.metadata.creationTimestamp \
+            -o jsonpath="{.items[-1].metadata.name}")
+
+          kubectl wait --for=condition=complete job/$JOB_NAME -n staging --timeout=120s || \
+          kubectl logs job/$JOB_NAME -n staging || exit 1
 
       - name: Rollout check
         run: |
@@ -200,14 +205,6 @@ jobs:
           kubectl get hpa -n production
           kubectl describe hpa backend-hpa -n production || true
 
-      # - name: Install load testing tool
-      #   run: sudo apt-get install -y hey
-
-      # - name: Load test production
-      #   run: |
-      #     INGRESS=$(kubectl get ingress -n production -o jsonpath='{.items[0].spec.rules[0].host}')
-      #     hey -z 1m -c 80 https://$INGRESS/api || true
-
       - name: Rollout check + rollback
         run: |
           kubectl rollout status deployment/backend -n production || kubectl rollout undo deployment/backend -n production
@@ -218,10 +215,16 @@ jobs:
 
       - name: Seed Data (production)
         run: |
-          kubectl delete job seed-job -n production || true
           kubectl apply -f k8s/seed-job.yaml -n production
-          kubectl wait --for=condition=complete job/seed-job -n production --timeout=120s || \
-          kubectl logs job/seed-job -n production || exit 1
+
+          JOB_NAME=$(kubectl get jobs -n production \
+            --sort-by=.metadata.creationTimestamp \
+            -o jsonpath="{.items[-1].metadata.name}")
+
+          echo "Job name: $JOB_NAME"
+
+          kubectl wait --for=condition=complete job/$JOB_NAME -n production --timeout=120s || \
+          kubectl logs job/$JOB_NAME -n production || exit 1
 
       - name: Debug cluster state
         run: |
