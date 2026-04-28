@@ -120,7 +120,7 @@ jobs:
 
       - name: Seed Data (staging)
         run: |
-          kubectl apply -f k8s/seed-job.yaml -n staging
+          kubectl create -f k8s/seed-job.yaml -n staging
 
           JOB_NAME=$(kubectl get jobs -n staging \
             --sort-by=.metadata.creationTimestamp \
@@ -215,7 +215,7 @@ jobs:
 
       - name: Seed Data (production)
         run: |
-          kubectl apply -f k8s/seed-job.yaml -n production
+          kubectl create -f k8s/seed-job.yaml -n production
 
           JOB_NAME=$(kubectl get jobs -n production \
             --sort-by=.metadata.creationTimestamp \
