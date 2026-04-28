@@ -228,6 +228,7 @@ jobs:
 
       - name: Debug cluster state
         run: |
+          kubectl get nodes
           kubectl get pods -n production
           kubectl get hpa -n production
           kubectl get ingress -n production
