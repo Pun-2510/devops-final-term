@@ -14,74 +14,127 @@ export default function GameCard({ game, onDelete }) {
   };
 
   return (
-    <div style={styles.card}>
-      <img src={game.imageUrl} alt={game.name} style={styles.image} />
-      <div style={styles.content}>
-        <div style={styles.topRow}>
-          <h3 style={styles.name}>{game.name}</h3>
-          {/* ← icon xóa nhỏ góc trên phải */}
-          <button style={styles.deleteBtn} onClick={handleDelete} title="Delete">
-            🗑
-          </button>
+    <div style={s.card}>
+      {/* IMAGE */}
+      <div style={s.imageWrap}>
+        <img src={game.imageUrl} alt={game.name} style={s.image} />
+        <div style={s.imageOverlay} />
+        {game.tags?.[0] && (
+          <span style={s.tagPill}>{game.tags[0]}</span>
+        )}
+        <button style={s.deleteBtn} onClick={handleDelete} title="Delete">✕</button>
+      </div>
+
+      {/* CONTENT */}
+      <div style={s.content}>
+        <h3 style={s.name}>{game.name}</h3>
+        <p style={s.meta}>{game.genre} · {game.releaseYear}</p>
+
+        <div style={s.footer}>
+          <span style={s.rating}>⭐ {game.rating}</span>
+          <span style={s.price}>
+            {game.price === 0 ? 'Free' : `$${game.price}`}
+          </span>
         </div>
-        <p style={styles.meta}>{game.genre} • {game.releaseYear}</p>
-        <p style={styles.rating}>⭐ {game.rating}/10</p>
       </div>
     </div>
   );
 }
 
-const styles = {
+const s = {
   card: {
     borderRadius: 14,
     overflow: 'hidden',
     background: '#fff',
-    boxShadow: '0 6px 18px rgba(0,0,0,0.08)',
-    transition: 'transform 0.2s ease',
-    cursor: 'pointer',
+    boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
     display: 'flex',
     flexDirection: 'column',
+    transition: 'transform 0.18s ease, box-shadow 0.18s ease',
+    cursor: 'pointer',
+  },
+  imageWrap: {
+    position: 'relative',
+    height: 200,
+    overflow: 'hidden',
   },
   image: {
     width: '100%',
-    height: 300,        // ← tăng lên để card dọc hơn
+    height: '100%',
     objectFit: 'cover',
+    transition: 'transform 0.3s ease',
+  },
+  imageOverlay: {
+    position: 'absolute', inset: 0,
+    background: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 50%)',
+  },
+  tagPill: {
+    position: 'absolute',
+    bottom: 10, left: 10,
+    background: 'rgba(255,255,255,0.18)',
+    backdropFilter: 'blur(6px)',
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: 600,
+    padding: '3px 9px',
+    borderRadius: 20,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  },
+  deleteBtn: {
+    position: 'absolute',
+    top: 8, right: 8,
+    background: 'rgba(0,0,0,0.45)',
+    backdropFilter: 'blur(4px)',
+    border: 'none',
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: 700,
+    width: 24, height: 24,
+    borderRadius: '50%',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    lineHeight: 1,
+    padding: 0,
   },
   content: {
-    padding: '0.85rem 1rem',
+    padding: '0.9rem 1rem',
     flex: 1,
-  },
-  topRow: {
     display: 'flex',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 8,
+    flexDirection: 'column',
+    gap: 4,
   },
   name: {
     margin: 0,
-    fontSize: '1rem',
-    flex: 1,
+    fontSize: '0.95rem',
+    fontWeight: 700,
+    color: '#111',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
   },
   meta: {
+    margin: 0,
     fontSize: 12,
-    color: '#777',
-    marginTop: 4,
+    color: '#999',
+  },
+  footer: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTop: '1px solid #f2f2f2',
   },
   rating: {
-    marginTop: 8,
     fontSize: 13,
+    fontWeight: 600,
     color: '#444',
   },
-  deleteBtn: {
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    fontSize: 14,
-    padding: '2px 4px',
-    borderRadius: 6,
-    color: '#aaa',
-    flexShrink: 0,
-    lineHeight: 1,
-    transition: 'color 0.15s',
-  }
+  price: {
+    fontSize: 13,
+    fontWeight: 700,
+    color: '#1a1a1a',
+  },
 };

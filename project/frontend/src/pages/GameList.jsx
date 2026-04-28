@@ -7,6 +7,8 @@ export default function GameList() {
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [search, setSearch] = useState('');
+  const [activeGenre, setActiveGenre] = useState('All');
 
   useEffect(() => {
     fetch(`/api/games`)
@@ -14,6 +16,14 @@ export default function GameList() {
       .then(data => { setGames(data); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
+
+  const genres = ['All', ...new Set(games.map(g => g.genre).filter(Boolean))];
+
+  const filtered = games.filter(g => {
+    const matchSearch = g.name.toLowerCase().includes(search.toLowerCase());
+    const matchGenre = activeGenre === 'All' || g.genre === activeGenre;
+    return matchSearch && matchGenre;
+  });
 
   const handleGameAdded = (newGame) => {
     setGames(prev => [...prev, newGame]);
@@ -25,39 +35,85 @@ export default function GameList() {
   };
 
   return (
-    <div style={styles.page}>
+    <div style={s.page}>
 
-      {/* HEADER */}
-      <div style={styles.topbar}>
-        <div style={{ textAlign: 'left' }}>      {/* ← fix căn giữa */}
-          <h1 style={styles.title}>Game Library</h1>
-          <p style={styles.subtitle}>Discover and explore amazing games</p>
+      {/* TOPBAR */}
+      <div style={s.topbar}>
+        <div>
+          <h1 style={s.title}>Game Reviews Hub</h1>
+          <p style={s.subtitle}>{games.length} games in your collection</p>
         </div>
-        <button style={styles.btnAdd} onClick={() => setShowModal(true)}>
+        <button style={s.btnAdd} onClick={() => setShowModal(true)}>
           + Add Game
         </button>
       </div>
 
-      {/* LOADING */}
-      {loading && (
-        <div style={styles.centerMsg}>Loading games...</div>
-      )}
-
-      {/* EMPTY STATE */}
-      {!loading && games.length === 0 && (
-        <div style={styles.emptyState}>
-          <div style={styles.emptyIcon}>🎮</div>
-          <p style={styles.emptyTitle}>No games yet</p>
-          <p style={styles.emptySub}>Click <strong>+ Add Game</strong> to add your first game</p>
+      {/* SEARCH + FILTER */}
+      {!loading && games.length > 0 && (
+        <div style={s.toolbar}>
+          <div style={s.searchWrap}>
+            <span style={s.searchIcon}>🔍</span>
+            <input
+              style={s.searchInput}
+              placeholder="Search games..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            {search && (
+              <button style={s.clearBtn} onClick={() => setSearch('')}>✕</button>
+            )}
+          </div>
+          <div style={s.genres}>
+            {genres.map(g => (
+              <button
+                key={g}
+                style={{ ...s.genreBtn, ...(activeGenre === g ? s.genreBtnActive : {}) }}
+                onClick={() => setActiveGenre(g)}
+              >
+                {g}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
-      {/* GRID — 4 cột cố định */}
-      {!loading && games.length > 0 && (
-        <div style={styles.grid}>
-          {games.map(g => (
-            <Link key={g._id} to={`/games/${g._id}`} style={styles.link}>
-              <GameCard game={g} onDelete={handleDelete}/>
+      {/* LOADING */}
+      {loading && (
+        <div style={s.centerMsg}>
+          <div style={s.spinner} />
+          <p style={{ color: '#888', marginTop: 12 }}>Loading games...</p>
+        </div>
+      )}
+
+      {/* EMPTY COLLECTION */}
+      {!loading && games.length === 0 && (
+        <div style={s.emptyState}>
+          <div style={s.emptyIcon}>🎮</div>
+          <p style={s.emptyTitle}>No games yet</p>
+          <p style={s.emptySub}>Click <strong>+ Add Game</strong> to add your first game</p>
+          <button style={s.emptyBtn} onClick={() => setShowModal(true)}>+ Add Game</button>
+        </div>
+      )}
+
+      {/* NO SEARCH RESULTS */}
+      {!loading && games.length > 0 && filtered.length === 0 && (
+        <div style={s.emptyState}>
+          <div style={s.emptyIcon}>🔍</div>
+          <p style={s.emptyTitle}>No results found</p>
+          <p style={s.emptySub}>Try a different name or genre</p>
+          <button style={{ ...s.emptyBtn, background: '#f0f0f0', color: '#333' }}
+            onClick={() => { setSearch(''); setActiveGenre('All'); }}>
+            Clear filters
+          </button>
+        </div>
+      )}
+
+      {/* GRID */}
+      {!loading && filtered.length > 0 && (
+        <div style={s.grid}>
+          {filtered.map(g => (
+            <Link key={g._id} to={`/games/${g._id}`} style={s.link}>
+              <GameCard game={g} onDelete={handleDelete} />
             </Link>
           ))}
         </div>
@@ -73,15 +129,12 @@ export default function GameList() {
   );
 }
 
-const styles = {
+const s = {
   page: {
-    padding: '2rem',
-    // maxWidth: 1100,
-    // margin: '0 auto',
-    fontFamily: 'Arial, sans-serif',
-    background: '#f7f8fc',
+    padding: '2rem 2.5rem',
+    fontFamily: "'Segoe UI', Arial, sans-serif",
+    background: '#f5f5f7',
     minHeight: '100vh',
-    textAlign: 'left',          // ← reset toàn page về left
   },
   topbar: {
     display: 'flex',
@@ -91,61 +144,148 @@ const styles = {
   },
   title: {
     margin: 0,
-    fontSize: '2rem',
-    textAlign: 'left',
+    fontSize: '1.9rem',
+    fontWeight: 700,
+    color: '#111',
   },
   subtitle: {
-    marginTop: 6,
-    color: '#666',
-    textAlign: 'left',
+    margin: '4px 0 0',
+    color: '#999',
+    fontSize: 13,
   },
   btnAdd: {
     background: '#1a1a1a',
     color: '#fff',
     border: 'none',
-    borderRadius: 8,
-    padding: '10px 20px',
+    borderRadius: 10,
+    padding: '10px 22px',
     fontSize: 14,
-    fontWeight: 600,
+    fontWeight: 700,
     cursor: 'pointer',
-    whiteSpace: 'nowrap',
-    flexShrink: 0,              // ← không bị co lại
+    flexShrink: 0,
+    letterSpacing: '0.02em',
   },
+
+  // TOOLBAR
+  toolbar: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 12,
+    marginBottom: '1.75rem',
+  },
+  searchWrap: {
+    display: 'flex',
+    alignItems: 'center',
+    background: '#fff',
+    borderRadius: 10,
+    border: '1.5px solid #e8e8e8',
+    padding: '0 12px',
+    maxWidth: 360,
+    gap: 8,
+  },
+  searchIcon: {
+    fontSize: 14,
+    lineHeight: 1,
+  },
+  searchInput: {
+    border: 'none',
+    outline: 'none',
+    fontSize: 14,
+    padding: '9px 0',
+    flex: 1,
+    background: 'transparent',
+    color: '#111',
+    fontFamily: 'inherit',
+  },
+  clearBtn: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    color: '#aaa',
+    fontSize: 12,
+    padding: '2px 4px',
+    lineHeight: 1,
+  },
+  genres: {
+    display: 'flex',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  genreBtn: {
+    background: '#fff',
+    border: '1.5px solid #e0e0e0',
+    borderRadius: 20,
+    padding: '5px 16px',
+    fontSize: 13,
+    fontWeight: 500,
+    cursor: 'pointer',
+    color: '#555',
+    transition: 'all 0.15s',
+  },
+  genreBtnActive: {
+    background: '#1a1a1a',
+    color: '#fff',
+    border: '1.5px solid #1a1a1a',
+  },
+
+  // GRID
   grid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(4, 1fr)',   // ← 4 cột cứng
+    gridTemplateColumns: 'repeat(4, 1fr)',
     gap: '20px',
   },
   link: {
     textDecoration: 'none',
     color: 'inherit',
   },
+
+  // STATES
   centerMsg: {
-    textAlign: 'center',
-    marginTop: 80,
-    color: '#888',
-    fontSize: 16,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    marginTop: 100,
+  },
+  spinner: {
+    width: 32, height: 32,
+    borderRadius: '50%',
+    border: '3px solid #e0e0e0',
+    borderTopColor: '#1a1a1a',
+    animation: 'spin 0.8s linear infinite',
   },
   emptyState: {
     textAlign: 'center',
     marginTop: 80,
-    padding: '3rem',
+    padding: '3rem 2rem',
     background: '#fff',
-    borderRadius: 14,
+    borderRadius: 16,
     border: '1.5px dashed #ddd',
+    maxWidth: 420,
+    margin: '80px auto 0',
   },
   emptyIcon: {
-    fontSize: 48,
-    marginBottom: 16,
+    fontSize: 44,
+    marginBottom: 14,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: 600,
-    color: '#333',
-    margin: '0 0 8px',
+    fontSize: 17,
+    fontWeight: 700,
+    color: '#222',
+    margin: '0 0 6px',
   },
   emptySub: {
-    color: '#888',
-    fontSize: 14,
+    color: '#999',
+    fontSize: 13,
+    margin: '0 0 20px',
+  },
+  emptyBtn: {
+    background: '#1a1a1a',
+    color: '#fff',
+    border: 'none',
+    borderRadius: 8,
+    padding: '9px 20px',
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: 'pointer',
   },
 };

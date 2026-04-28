@@ -4,6 +4,7 @@ terraform/.terraform
 terraform/.terraform.lock.hcl
 terraform/.terraform.tfstate
 terraform/.terraform.tfstate.backup
+terraform/terraform.tfstate.backup
 
 project/backend/node_modules
 project/backend/dist
