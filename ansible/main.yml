@@ -2,11 +2,11 @@
 - name: Production-Grade Ingress and Cert-Manager Setup
   hosts: localhost
   connection: local
+
   vars:
     letsencrypt_email: "trangiathanh0205@gmail.com"
     ingress_ns: "ingress-nginx"
     cert_manager_ns: "cert-manager"
-    monitoring_ns: "monitoring"
 
   tasks:
     - name: Add Helm Repositories
@@ -17,7 +17,6 @@
         - { name: 'metrics-server', url: 'https://kubernetes-sigs.github.io/metrics-server/' }
         - { name: 'ingress-nginx', url: 'https://kubernetes.github.io/ingress-nginx' }
         - { name: 'jetstack', url: 'https://charts.jetstack.io' }
-        - { name: 'prometheus-community', url: 'https://prometheus-community.github.io/helm-charts' }
 
     - name: Install Metrics Server
       kubernetes.core.helm:
@@ -25,33 +24,12 @@
         chart_ref: metrics-server/metrics-server
         release_namespace: kube-system
         create_namespace: false
+        wait: true
+        chart_version: "3.12.1"
         values:
           args:
             - --kubelet-insecure-tls
             - --kubelet-preferred-address-types=InternalIP
-
-    - name: Wait Metrics Server Deployment Exists
-      kubernetes.core.k8s_info:
-        kind: Deployment
-        name: metrics-server
-        namespace: kube-system
-      register: ms_init
-      until: ms_init.resources | length > 0
-      retries: 20
-      delay: 10
-    
-    - name: Wait for Metrics Server
-      kubernetes.core.k8s_info:
-        kind: Deployment
-        name: metrics-server
-        namespace: kube-system
-      register: ms_status
-      until:
-        - ms_status.resources | length > 0
-        - ms_status.resources[0].status.readyReplicas is defined
-        - ms_status.resources[0].status.readyReplicas >= 1
-      retries: 15
-      delay: 10
 
     - name: Install NGINX Ingress Controller
       kubernetes.core.helm:
@@ -60,6 +38,19 @@
         release_namespace: "{{ ingress_ns }}"
         create_namespace: true
         wait: true
+        chart_version: "4.10.0"
+
+    - name: Wait for ingress-nginx controller
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        name: ingress-nginx-controller
+        namespace: "{{ ingress_ns }}"
+      register: ingress_status
+      until:
+        - ingress_status.resources | length > 0
+        - ingress_status.resources[0].status.availableReplicas | default(0) >= 1
+      retries: 20
+      delay: 10
 
     - name: Install Cert-Manager (with CRDs)
       kubernetes.core.helm:
@@ -68,32 +59,23 @@
         release_namespace: "{{ cert_manager_ns }}"
         create_namespace: true
         wait: true
+        chart_version: "1.14.4"
         values:
           installCRDs: true
 
-    - name: Install Prometheus and Grafana
-      kubernetes.core.helm:
-        name: kube-prometheus-stack
-        chart_ref: prometheus-community/kube-prometheus-stack
-        release_namespace: "{{ monitoring_ns }}"
-        create_namespace: true
-        wait: true
-
-    - name: Wait for Cert-Manager Webhook Deployment (Retry Logic)
+    - name: Wait for Cert-Manager Webhook
       kubernetes.core.k8s_info:
         kind: Deployment
         name: cert-manager-webhook
         namespace: "{{ cert_manager_ns }}"
       register: webhook_status
-      until: 
-        - webhook_status.resources is defined
+      until:
         - webhook_status.resources | length > 0
-        - webhook_status.resources[0].status.availableReplicas is defined
-        - webhook_status.resources[0].status.availableReplicas >= 1
+        - webhook_status.resources[0].status.availableReplicas | default(0) >= 1
       retries: 15
       delay: 10
 
-    - name: Pause for Network Propagation
+    - name: Pause for propagation
       pause:
         seconds: 15
 
@@ -116,16 +98,17 @@
                     ingress:
                       class: nginx
 
-    - name: Wait for ClusterIssuer to be Ready
+    - name: Wait for ClusterIssuer Ready
       kubernetes.core.k8s_info:
         api_version: cert-manager.io/v1
         kind: ClusterIssuer
         name: letsencrypt-prod
       register: issuer_check
       until:
-        - issuer_check.resources is defined
         - issuer_check.resources | length > 0
+        - issuer_check.resources[0].status is defined
         - issuer_check.resources[0].status.conditions is defined
+        - (issuer_check.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | list | length) > 0
         - (issuer_check.resources[0].status.conditions | selectattr('type', 'equalto', 'Ready') | list | first).status == "True"
       retries: 20
       delay: 10
