@@ -191,7 +191,7 @@ const games = [
 ];
 
 mongoose
-  .connect(process.env.MONGO_URI || 'mongodb://mongo:27017/gamedb')
+  .connect(process.env.MONGO_URI)
   .then(async () => {
     // Check DB for existing data
     const count = await Game.countDocuments();

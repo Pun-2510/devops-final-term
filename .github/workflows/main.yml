@@ -110,7 +110,9 @@ jobs:
         run: kubectl create namespace staging || true
 
       - name: Deploy BASE (staging)
-        run: kubectl apply -f k8s/base.yaml -n staging
+        run: |
+          kubectl apply -f k8s/configmap.yaml -n staging
+          kubectl apply -f k8s/base.yaml -n staging
 
       - name: Deploy STAGING config
         run: kubectl apply -f k8s/staging.yaml
@@ -186,7 +188,9 @@ jobs:
           kubectl rollout restart statefulset alertmanager-kube-prometheus-stack-alertmanager -n monitoring
 
       - name: Deploy BASE
-        run: kubectl apply -f k8s/base.yaml -n production
+        run: |
+          kubectl apply -f k8s/configmap.yaml -n production
+          kubectl apply -f k8s/base.yaml -n production
 
       - name: Deploy PRODUCTION config
         run: kubectl apply -f k8s/production.yaml

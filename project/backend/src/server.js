@@ -19,5 +19,5 @@ app.get('/ready', async (req, res) => {
   }
 });
 
-mongoose.connect(process.env.MONGO_URI || 'mongodb://mongo:27017/gamedb')
+mongoose.connect(process.env.MONGO_URI)
   .then(() => app.listen(5000, () => console.log('Server running on :5000')));
