@@ -105,17 +105,6 @@ jobs:
 
       - name: Update kubeconfig
         run: aws eks update-kubeconfig --region $AWS_REGION --name $CLUSTER_NAME
-      
-      - name: Debug auth
-        run: |
-          echo "=== AWS Identity ==="
-          aws sts get-caller-identity
-
-          echo "=== Current Context ==="
-          kubectl config current-context
-
-          echo "=== Can access cluster? ==="
-          kubectl get nodes   
 
       - name: Create namespace
         run: kubectl create namespace staging || true
