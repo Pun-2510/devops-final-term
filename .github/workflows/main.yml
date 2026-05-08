@@ -52,28 +52,33 @@ jobs:
           cd project/frontend && npm run build
 
       - name: Login Docker
+        if: github.event_name == 'push'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build & Push Backend
+        if: github.event_name == 'push'
         run: |
           docker build -t $DOCKER_USER/backend-app:$IMAGE_TAG ./project/backend
           docker push $DOCKER_USER/backend-app:$IMAGE_TAG
 
       - name: Build & Push Frontend
+        if: github.event_name == 'push'
         run: |
           docker build -t $DOCKER_USER/frontend-app:$IMAGE_TAG ./project/frontend
           docker push $DOCKER_USER/frontend-app:$IMAGE_TAG
 
       - name: Inject image into base.yaml and seed-job.yaml
+        if: github.event_name == 'push'
         run: |
           sed -i "s|BACKEND_IMAGE|$DOCKER_USER/backend-app:$IMAGE_TAG|g" k8s/base.yaml
           sed -i "s|FRONTEND_IMAGE|$DOCKER_USER/frontend-app:$IMAGE_TAG|g" k8s/base.yaml
           sed -i "s|BACKEND_IMAGE|$DOCKER_USER/backend-app:$IMAGE_TAG|g" k8s/seed-job.yaml
 
       - name: Upload manifests
+        if: github.event_name == 'push'
         uses: actions/upload-artifact@v4
         with:
           name: k8s
@@ -83,6 +88,7 @@ jobs:
 
 # 2. Staging
   staging-deploy:
+    if: github.event_name == 'push'
     needs: build-and-push
     runs-on: ubuntu-latest
 
@@ -138,6 +144,7 @@ jobs:
 
 # 3. Production
   production-deploy:
+    if: github.event_name == 'push'
     needs: staging-deploy
     runs-on: ubuntu-latest
 
