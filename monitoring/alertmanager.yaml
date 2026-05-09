@@ -1,7 +1,7 @@
 global:
   smtp_smarthost: 'smtp.gmail.com:587'
-  smtp_from: 'tranthanh251005@gmail.com'
-  smtp_auth_username: 'tranthanh251005@gmail.com'
+  smtp_from: 'machlegiaduy2005@gmail.com'
+  smtp_auth_username: 'machlegiaduy2005@gmail.com'
   smtp_auth_password: '${SMTP_AUTH_PASSWORD}'
   smtp_require_tls: true
 
@@ -15,5 +15,5 @@ route:
 receivers:
   - name: 'email-alert'
     email_configs:
-      - to: 'tranthanh251005@gmail.com'
+      - to: 'machlegiaduy2005@gmail.com'
         send_resolved: true
