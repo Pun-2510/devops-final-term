@@ -40,7 +40,7 @@ export default function GameList() {
       {/* TOPBAR */}
       <div style={s.topbar}>
         <div>
-          <h1 style={s.title}>Game Reviews Hub</h1>
+          <h1 style={s.title}>Game Reviews Collection</h1
           <p style={s.subtitle}>{games.length} games in your collection</p>
         </div>
         <button style={s.btnAdd} onClick={() => setShowModal(true)}>
