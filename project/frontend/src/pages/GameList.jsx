@@ -55,7 +55,7 @@ export default function GameList() {
             <span style={s.searchIcon}>🔍</span>
             <input
               style={s.searchInput}
-              placeholder="Search Games"
+              placeholder="Search Games..."
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
